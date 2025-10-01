@@ -10,19 +10,20 @@ class GPT2:
         self.model.eval()
 
     def predict_next(self, text, k):
-        # Encode
+        # Encode input
         inputs = self.tokenizer.encode(text, return_tensors="pt").to(device)
 
-        # Forward pass
+        # Forward pass (deterministic with seeds set)
         with torch.no_grad():
             outputs = self.model(inputs)
-            logits = outputs.logits  # modern API
+            logits = outputs.logits
 
-        # Get probs
+        # Softmax probabilities
         probs = logits[0, -1, :].softmax(dim=-1)
+
+        # Deterministic top-k
         topk = torch.topk(probs, k)
+        tokens = [self.tokenizer.decode([idx]) for idx in topk.indices.tolist()]
+        values = topk.values.tolist()
 
-        words = [self.tokenizer.decode([idx]) for idx in topk.indices]
-        probs = topk.values.tolist()
-
-        return words, probs
+        return tokens, values
